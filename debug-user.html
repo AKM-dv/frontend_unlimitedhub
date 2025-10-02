@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug User Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #c82333;
+        }
+        .success {
+            background: #28a745;
+        }
+        .success:hover {
+            background: #218838;
+        }
+        .info {
+            background: #17a2b8;
+        }
+        .info:hover {
+            background: #138496;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .data-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .data-section h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        pre {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .error-highlight {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 5px;
+            border-radius: 3px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug User Data & localStorage</h1>
+        <p>Use this tool to inspect and fix corrupted user data that might be causing JSON parse errors.</p>
+        
+        <div>
+            <button onclick="inspectUserData()" class="info">🔍 Inspect User Data</button>
+            <button onclick="clearAuthData()" class="success">🧹 Clear Auth Data</button>
+            <button onclick="clearAllStorage()">🗑️ Clear All Storage</button>
+            <button onclick="testJSONParsing()" class="info">🧪 Test JSON Parsing</button>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div id="userDataSection" class="data-section" style="display: none;">
+            <h3>🔑 Current Auth Data</h3>
+            <div id="userDataContent"></div>
+        </div>
+        
+        <div id="localStorageSection" class="data-section" style="display: none;">
+            <h3>💾 localStorage Contents</h3>
+            <div id="localStorageContent"></div>
+        </div>
+        
+        <div id="jsonTestSection" class="data-section" style="display: none;">
+            <h3>🧪 JSON Parsing Test Results</h3>
+            <div id="jsonTestContent"></div>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 5000);
+        }
+
+        function inspectUserData() {
+            try {
+                const authToken = localStorage.getItem('authToken');
+                const userData = localStorage.getItem('userData');
+                
+                const userDataSection = document.getElementById('userDataSection');
+                const userDataContent = document.getElementById('userDataContent');
+                
+                let content = '';
+                
+                if (authToken) {
+                    content += `<h4>🔑 Auth Token</h4>`;
+                    content += `<p><strong>Length:</strong> ${authToken.length} characters</p>`;
+                    content += `<p><strong>Preview:</strong> ${authToken.substring(0, 50)}...</p>`;
+                } else {
+                    content += `<p>❌ No auth token found</p>`;
+                }
+                
+                if (userData) {
+                    content += `<h4>👤 User Data</h4>`;
+                    content += `<p><strong>Length:</strong> ${userData.length} characters</p>`;
+                    content += `<p><strong>Raw Data:</strong></p>`;
+                    content += `<pre>${userData}</pre>`;
+                    
+                    try {
+                        const parsed = JSON.parse(userData);
+                        content += `<p><strong>✅ Parsed Successfully:</strong></p>`;
+                        content += `<pre>${JSON.stringify(parsed, null, 2)}</pre>`;
+                        
+                        // Check specific fields
+                        if (parsed.interests) {
+                            content += `<h4>🎯 Interests Field Analysis</h4>`;
+                            content += `<p><strong>Type:</strong> ${typeof parsed.interests}</p>`;
+                            content += `<p><strong>Value:</strong> ${JSON.stringify(parsed.interests)}</p>`;
+                            
+                            if (Array.isArray(parsed.interests)) {
+                                content += `<p>✅ Interests is a valid array</p>`;
+                            } else {
+                                content += `<p class="error-highlight">❌ Interests is NOT an array (type: ${typeof parsed.interests})</p>`;
+                            }
+                        } else {
+                            content += `<p>❌ No interests field found</p>`;
+                        }
+                    } catch (e) {
+                        content += `<p class="error-highlight">❌ Failed to parse user data: ${e.message}</p>`;
+                        content += `<p><strong>Error at position:</strong> ${e.message.includes('position') ? e.message.split('position ')[1] : 'Unknown'}</p>`;
+                    }
+                } else {
+                    content += `<p>❌ No user data found</p>`;
+                }
+                
+                userDataContent.innerHTML = content;
+                userDataSection.style.display = 'block';
+                
+                showStatus('User data inspection complete', 'info');
+            } catch (error) {
+                showStatus(`Error inspecting user data: ${error.message}`, 'error');
+            }
+        }
+
+        function clearAuthData() {
+            try {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userData');
+                showStatus('✅ Auth data cleared successfully!', 'success');
+                document.getElementById('userDataSection').style.display = 'none';
+                document.getElementById('localStorageSection').style.display = 'none';
+            } catch (error) {
+                showStatus(`Error clearing auth data: ${error.message}`, 'error');
+            }
+        }
+
+        function clearAllStorage() {
+            try {
+                localStorage.clear();
+                showStatus('✅ All localStorage data cleared successfully!', 'success');
+                document.getElementById('userDataSection').style.display = 'none';
+                document.getElementById('localStorageSection').style.display = 'none';
+            } catch (error) {
+                showStatus(`Error clearing storage: ${error.message}`, 'error');
+            }
+        }
+
+        function testJSONParsing() {
+            try {
+                const userData = localStorage.getItem('userData');
+                if (!userData) {
+                    showStatus('No user data to test', 'info');
+                    return;
+                }
+
+                const jsonTestSection = document.getElementById('jsonTestSection');
+                const jsonTestContent = document.getElementById('jsonTestContent');
+                
+                let content = '<h4>🧪 JSON Parsing Test</h4>';
+                
+                // Test 1: Basic JSON parse
+                try {
+                    const parsed = JSON.parse(userData);
+                    content += `<p>✅ Basic JSON parse: SUCCESS</p>`;
+                    
+                    // Test 2: Check interests field specifically
+                    if (parsed.interests) {
+                        content += `<p>✅ Interests field exists</p>`;
+                        content += `<p><strong>Interests type:</strong> ${typeof parsed.interests}</p>`;
+                        content += `<p><strong>Interests value:</strong> ${JSON.stringify(parsed.interests)}</p>`;
+                        
+                        // Test 3: Try to stringify interests
+                        try {
+                            const interestsString = JSON.stringify(parsed.interests);
+                            content += `<p>✅ Interests stringify: SUCCESS</p>`;
+                            content += `<p><strong>Stringified:</strong> ${interestsString}</p>`;
+                        } catch (e) {
+                            content += `<p class="error-highlight">❌ Interests stringify: FAILED - ${e.message}</p>`;
+                        }
+                    } else {
+                        content += `<p>❌ No interests field found</p>`;
+                    }
+                } catch (e) {
+                    content += `<p class="error-highlight">❌ Basic JSON parse: FAILED - ${e.message}</p>`;
+                    
+                    // Try to find the problematic part
+                    if (e.message.includes('position')) {
+                        const position = parseInt(e.message.split('position ')[1]);
+                        content += `<p><strong>Error at position:</strong> ${position}</p>`;
+                        content += `<p><strong>Context around error:</strong></p>`;
+                        content += `<pre>${userData.substring(Math.max(0, position - 20), position + 20)}</pre>`;
+                    }
+                }
+                
+                jsonTestContent.innerHTML = content;
+                jsonTestSection.style.display = 'block';
+                
+                showStatus('JSON parsing test complete', 'info');
+            } catch (error) {
+                showStatus(`Error testing JSON parsing: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
